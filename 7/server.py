@@ -18,12 +18,10 @@ class LineReversal:
         for s in sessions.values():
             nl = s.recv_buf.find(b'\n')
             if nl == -1:
-                print("No line yet")
                 continue
             spl = s.recv_buf.split(b'\n')
             s.recv_buf = spl.pop()
             for line in spl:
-                print("Got line from, sending reverse", short(line))
                 l = list(line)
                 l.reverse()
                 rev = bytes(l)
@@ -133,7 +131,6 @@ class Session:
         self.recv_len += len(new_data)
         if len(new_data):
             self.recv_buf += new_data
-            print("Buf is now", short(self.recv_buf))
         self.send('ack', self.id, self.recv_len)
 
     def on_ack(self, l):
@@ -143,7 +140,6 @@ class Session:
             return
         # unexpected ack
         if l > self.send_len:
-            print("Unexpected ack")
             self.close()
             return
         # length of data confirmed by ack
@@ -158,16 +154,17 @@ class Session:
     def retry(self):
         trunc = self.send_buf[:950]
         self.send('data', self.id, self.send_ack_len, trunc)
-        print("Sent buf total", self.send_len, "acked", self.send_ack_len, "Sent:", len(trunc))
 
-    def send_data_old(self, data):
+    def send_data(self, data):
         self.send_buf += data
-        # truncate to first 950 in case of large message
-        trunc = self.send_buf[:950]
+        buf = self.send_buf
+        pos = self.send_ack_len
         self.update_last_send()
-        self.send('data', self.id, self.send_ack_len, trunc)
+        while buf:
+            trunc, buf = buf[:950], buf[950:]
+            self.send('data', self.id, pos, trunc)
+            pos += len(trunc)
         self.send_len += len(data)
-        print("Sent buf total", self.send_len, "acked", self.send_ack_len, "Sent:", len(trunc))
 
 def unescape_split(data):
     esc = False
