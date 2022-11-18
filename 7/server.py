@@ -67,7 +67,7 @@ def tick():
 
 class Session:
 
-    RETRY_TIMEOUT = 3
+    RETRY_TIMEOUT = 1
     EXPIRE_TIMEOUT = 60
 
     def __init__(self, sess_id, sock, addr):
@@ -157,13 +157,9 @@ class Session:
 
     def send_data(self, data):
         self.send_buf += data
-        buf = self.send_buf
-        pos = self.send_ack_len
+        trunc = self.send_buf[:950]
         self.update_last_send()
-        while buf:
-            trunc, buf = buf[:950], buf[950:]
-            self.send('data', self.id, pos, trunc)
-            pos += len(trunc)
+        self.send('data', self.id, self.send_ack_len, trunc)
         self.send_len += len(data)
 
 def unescape_split(data):
@@ -276,7 +272,7 @@ if __name__ == '__main__':
     selector.register(sock, selectors.EVENT_READ)
     try:
         while True:
-            ready = selector.select(timeout=3)
+            ready = selector.select(timeout=1)
             if len(ready):
                 data, address = sock.recvfrom(8192)
                 recv_packet(sock, data, address)
